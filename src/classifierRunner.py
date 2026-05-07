@@ -7,14 +7,23 @@ from .eegSource import EegSource
 from bci_essentials.io.messenger import Messenger
 from bci_essentials.data_tank.data_tank import DataTank
 from bci_essentials.bci_controller import BciController
+from .taskManager import TaskManager
+
 
 class ClassifierRunner:
 
-    def __init__(self, classifierSource: ClassifierSource, eegSource: EegSource, messenger: Messenger):
+    def __init__(
+            self,
+            classifierSource: ClassifierSource,
+            eegSource: EegSource,
+            messenger: Messenger | None,
+            taskManager: TaskManager | None
+    ):
         self.eegSource = eegSource
         self.classifierSource = classifierSource
         self.dataTank = DataTank()
         self.messenger = messenger
+        self.taskManager = taskManager
         self.bci_controller = None
         self.stop_event = threading.Event()
         self.exception = None
@@ -25,8 +34,8 @@ class ClassifierRunner:
         has_new_eeg = self.eegSource.isThereNewData()
 
         if is_none or has_new_classifier or has_new_eeg:
-            print("CHANGING MODEL")
-            print(self.classifierSource.modelName)
+            if self.taskManager is not None:
+                self.taskManager.switch( self.classifierSource.modelName )
 
             self.bci_controller = BciController(
                 eeg_source=self.eegSource.getSource(),
@@ -68,9 +77,6 @@ class ClassifierRunner:
             sleep(0.1)
 
     def set_stop(self):
-        '''
-        Tell the processing loop to stop execution
-        '''
         if self.thread:
             self.stop_event.set()
             self.bci_controller = None

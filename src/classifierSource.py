@@ -9,6 +9,7 @@ class ClassifierSource:
 
         self.model = None
         self.newModel = None
+        self.modelName = None
 
         self.thereIsNewData = False
         self.needToUpdate = False
@@ -23,11 +24,11 @@ class ClassifierSource:
         return self.paradigm
 
     def isThereNewData(self):
-        return self.thereIsNewData  # just read, don't consume here
+        return self.thereIsNewData
 
     def update(self):
         if self.needToUpdate:
-            self.needToUpdate = False  # reset first to avoid re-entrancy
+            self.needToUpdate = False
             self.thereIsNewData = True
             self.classifier.clf = self.newModel
             self.model = self.newModel

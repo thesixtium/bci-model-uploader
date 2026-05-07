@@ -8,7 +8,7 @@ from src.eegSource import EegSource
 if __name__ == '__main__':
     cs = NfcSource()
     es = EegSource()
-    cr = ClassifierRunner(cs, es, None)
+    cr = ClassifierRunner( cs, es, None, None )
 
     cs.setup()
     cr.run()
@@ -19,3 +19,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("Stopping...")
         cs.stop()
+        exit()
