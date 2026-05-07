@@ -28,7 +28,7 @@ class ClassifierRunner:
         self.stop_event = threading.Event()
         self.exception = None
 
-    def setup_bci_controller(self):
+    def setup_bci_controller( self ):
         is_none = self.bci_controller is None
         has_new_classifier = self.classifierSource.isThereNewData()
         has_new_eeg = self.eegSource.isThereNewData()
@@ -46,7 +46,7 @@ class ClassifierRunner:
                 messenger=self.messenger
             )
 
-            self.bci_controller.setup(online=True, train_complete=True)
+            self.bci_controller.setup( online=True, train_complete=True )
 
             self.bci_controller.event_timestamp_buffer = []
             self.bci_controller.event_marker_buffer = []
@@ -54,33 +54,33 @@ class ClassifierRunner:
             self.classifierSource.thereIsNewData = False
             self.eegSource.thereIsNewData = False
 
-    def run(self):
-        self.thread = threading.Thread(target=self.step_loop)
+    def run( self ):
+        self.thread = threading.Thread( target=self.step_loop )
         self.thread.start()
 
         while self.thread.is_alive():
             if self.exception:
-                print("RAISING EXCEPTION")
+                print( "RAISING EXCEPTION" )
                 raise self.exception
 
-            sleep(0.1)
+            sleep( 0.1 )
 
-    def step_loop(self):
+    def step_loop( self ):
         while not self.stop_event.is_set():
             try:
                 self.setup_bci_controller()
                 #self.bci_controller.step()
             except Exception as e:
                 self.shutdown()
-                self.exception = Exception(f"Error in Bessy processing loop: {e}")
+                self.exception = Exception( f"Error in Bessy processing loop: {e}" )
 
             sleep(0.1)
 
-    def set_stop(self):
+    def set_stop( self ):
         if self.thread:
             self.stop_event.set()
             self.bci_controller = None
             self.thread.join()
 
-    def shutdown(self):
+    def shutdown( self ):
         self.stop_event.set()

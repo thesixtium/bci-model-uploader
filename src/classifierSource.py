@@ -3,7 +3,7 @@ from bci_essentials.paradigm.p300_paradigm import P300Paradigm
 
 class ClassifierSource:
 
-    def __init__(self):
+    def __init__( self ):
         self.classifier = ErpRgClassifier()
         self.paradigm = P300Paradigm()
 
@@ -14,19 +14,24 @@ class ClassifierSource:
         self.thereIsNewData = False
         self.needToUpdate = False
 
-    def setup(self):
+
+    def setup( self ):
         pass
 
-    def getClassifier(self):
+
+    def getClassifier( self ):
         return self.classifier
 
-    def getParadigm(self):
+
+    def getParadigm( self ):
         return self.paradigm
 
-    def isThereNewData(self):
+
+    def isThereNewData( self ):
         return self.thereIsNewData
 
-    def update(self):
+
+    def update( self ):
         if self.needToUpdate:
             self.needToUpdate = False
             self.thereIsNewData = True
