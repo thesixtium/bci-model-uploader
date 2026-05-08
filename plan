@@ -1,0 +1,36 @@
+Plan:
+- Make a Docker container that launches all needed BCI stuff
+- Have plugin to NFC reader (or other device) to change running
+  program and task header
+- Deploy Muhammed Reza's FM model and just switch out task header
+- Put task header on NFC chip
+- Works on any platform
+- Start with either DSI2LSL/DSI-7 or whatever Muhammed Reza is using
+- Have LSL as a generic input
+- For the output all you need to know is how many output classes
+  there are
+- Need a way to get data back to task header for pretraining
+- Try everything outside of docker first then put into docker after
+
+1M parameter
+pyhthon
+currently offline dataset
+Ask rexa for the code
+BCIC2A dataset
+
+NFC Tag:
+- 10 bits: User ID
+-  6 bits: Application #
+
+Task Header File Name:
+- User ID
+- Application #
+
+Application Class:
+- App Name
+- # of Output Classes
+- Open Application Function
+- Close Application Function
+- BCI Paradigm
+
+Store Dictionary of Application # and App Names
