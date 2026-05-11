@@ -10,7 +10,7 @@ class ApplicationClass:
         self.bci_paradigm = bci_paradigm
 
     def open( self ):
-        pass
+        print( f"Opened {self.name}" )
 
     def close( self ):
-        pass
+        print( f"Closed {self.name}" )

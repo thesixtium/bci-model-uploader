@@ -11,11 +11,12 @@ class NfcReader:
         self.application_number = 0  # 2 chars / 8 bits
 
         # Arduino Variables
-        port = "COM3"
+        port = ""
         ports = list( serial.tools.list_ports.comports() )
         for p in ports:
             if "Arduino" in p.description:
                 port = p.name
+        print(port)
         self.arduino = serial.Serial( port, baudrate, timeout=5 )
         time.sleep( 2 )
 
@@ -24,21 +25,22 @@ class NfcReader:
         self._thread = threading.Thread( target=self._read_serial, daemon=True )
         self._thread.start()
 
-
-    def _read_serial( self ):
+    def _read_serial(self):
         while self._running:
             if self.arduino.in_waiting > 0:
-                line = self.arduino.readline().decode( "utf-8" ).strip()
-                if "\n" in line:
-                    data = line.split( "\n" )[0]
-                    if len( data ) == 4:
-                        self.user_id = ( ord( data[0] ) << 8 ) | ord( data[1] )
-                        self.application_number = ( ord( data[2] ) << 8 ) | ord( data[3] )
+                line = self.arduino.readline().decode("utf-8").strip()
+                if len(line) == 4:
+                    new_user_id = (ord(line[0]) << 8) | ord(line[1])
+                    new_application_number = (ord(line[2]) << 8) | ord(line[3])
+                    if new_user_id != self.user_id or new_application_number != self.application_number:
+                        self.user_id = new_user_id
+                        self.application_number = new_application_number
                         self.new_data = True
-                        print( f"user_id: { self.user_id }, application_number: { self.application_number }" )
-
+            else:
+                time.sleep( 0.01 )
     def is_new_data( self ) -> bool:
         return self.new_data
 
     def get_data( self ) -> (int, int):
+        self.new_data = False
         return self.user_id, self.application_number
