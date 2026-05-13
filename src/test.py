@@ -1,4 +1,4 @@
-import numpy as np
+"""import numpy as np
 import torch
 import mne
 from moabb.datasets import BNCI2014_004
@@ -31,6 +31,19 @@ from sklearn.preprocessing import LabelEncoder
 le = LabelEncoder()
 y_int = le.fit_transform(y)  # 'left_hand'->0, 'right_hand'->1
 print(le.classes_)  # so you know which number means what
+print(len(le.classes_))"""
 
+from moabb.datasets import BNCI2014_004
+from moabbMotorImageryDataLoader import MoabbMotorImageryDataLoader
 
-train_dataset, valid_dataset, test_dataset = get_data_single_subject(X, y_int)
+mmidl = MoabbMotorImageryDataLoader(
+    BNCI2014_004(),
+    2,
+    0,
+    38,
+    0,
+    4,
+    256
+)
+
+print( mmidl.get_class_names() )
