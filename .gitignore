@@ -1,2 +1,5 @@
 /.idea
 /src/__pycache__
+/src/logs
+src/eegpt_mcae_58chs_4s_large4E.ckpt
+/src/C-/Users/ajrbe/mne_data
