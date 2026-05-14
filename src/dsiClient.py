@@ -74,7 +74,7 @@ def main():
         CLASS_NAMES = ['left_hand', 'right_hand']
 
         model = GenericEEGPTModel.load_from_checkpoint(
-            'checkpoints/eegpt-epoch=99-valid_acc=0.72.ckpt',
+            'checkpoints/last.ckpt',
             # must pass any args that __init__ requires:
             load_path=load_path,
             use_channels_names=use_channels_names,

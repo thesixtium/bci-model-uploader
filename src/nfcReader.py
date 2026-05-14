@@ -4,7 +4,7 @@ import serial.tools.list_ports
 import threading
 
 class NfcReader:
-    def __init__( self, baudrate=9600 ):
+    def __init__( self, baudrate=115200 ):
         # Data Variables
         self.new_data = False
         self.user_id = 0  # 2 chars / 8 bits
@@ -44,3 +44,9 @@ class NfcReader:
     def get_data( self ) -> (int, int):
         self.new_data = False
         return self.user_id, self.application_number
+
+if __name__ == "__main__":
+    nr = NfcReader()
+    while True:
+        if nr.is_new_data():
+            print( nr.get_data() )
