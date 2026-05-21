@@ -22,4 +22,4 @@ class ApplicationClass:
         print( f"Closed {self.name}" )
 
     def receive_classification( self, classification ):
-        pass
+        print(f"Got {classification}")

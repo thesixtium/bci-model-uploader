@@ -6,6 +6,7 @@ from pytorch_lightning import loggers as pl_loggers
 from datasets.BNCI2014_004 import DatasetBNCI2014_004
 from datasets.BNCI2015_001 import DatasetBNCI2015_001
 from src.train_new_eegpt_models.moabbMotorImageryDataLoader import MoabbMotorImageryDataLoader
+from src.train_new_eegpt_models.csvDataLoader import CsvEegDataLoader
 from src.core.generic_eegpt_model_lib.metricMethods import metrics_display, get_latest_metrics_csv
 
 """
@@ -84,8 +85,25 @@ def train_EEGPT_model_from_dataset( model_name, data, use_channels_names, base_m
 if __name__ == '__main__':
     seed_torch(7_11_2002)
     base_model = r"C:\Users\ajrbe\Documents\Git\bci-model-uploader\src\checkpoints\eegpt_mcae_58chs_4s_large4E.ckpt"
-    datasets = [DatasetBNCI2015_001(), DatasetBNCI2014_004()]
 
+    csv_path = "datasets/DSI7_Dummy.csv"
+    loaded_data = CsvEegDataLoader(
+        csv_path,
+        ["right", "left"],
+        150
+    )
+
+    train_EEGPT_model_from_dataset(
+        "DSI7_Dummy",
+        loaded_data,
+        ["F4", "C4", "P4", "P3", "C3", "F3"],
+        base_model,
+        20,
+        4e-4,
+        2
+    )
+
+    """datasets = [DatasetBNCI2015_001(), DatasetBNCI2014_004()]
     for dataset in datasets:
         loaded_data = MoabbMotorImageryDataLoader( dataset )
 
@@ -97,5 +115,5 @@ if __name__ == '__main__':
             20,
             4e-4,
             dataset.get_n_classes()
-        )
+        )"""
 

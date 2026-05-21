@@ -129,7 +129,7 @@ def convert(xdf_path: str, output_dir: str | None = None, stream_index: int | No
 
 def main():
     # ── Edit these variables ──────────────────────────────────────────────────
-    XDF_FILE    = "xdf_test_data.xdf"   # Path to the input .xdf file
+    XDF_FILE    = "run1.xdf"   # Path to the input .xdf file
     OUTPUT_DIR  = None              # Output folder for CSVs, or None to use same dir as input
     STREAM      = None              # Stream index to convert (0-based), or None for all streams
     LIST_ONLY   = False             # Set True to print stream info and exit without converting

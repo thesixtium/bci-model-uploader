@@ -1,3 +1,4 @@
+import os
 import time
 import torch
 import serial
@@ -16,14 +17,19 @@ from src.run_models.model import Model
 
 class Classifier:
     def __init__( self, window_size=1024 ):
+        self.current_classification = 0
+        self.current_confidence = 0
+
         self.__window_size = window_size
-        self.__class_names = []
+        self.__class_names = {}
         self.__number_of_channels = None
         self.__thread = None
         self.__running = False
         self.__model = None
         self.__port = None
+        self.__dsi2lsl_process = None
 
+        self.find_dsi7_port()
         print("Running DSI2LSL")
         self.run_dsi2lsl()
         time.sleep(5)
@@ -38,22 +44,23 @@ class Classifier:
 
     def find_dsi7_port(self):
         ports = list(serial.tools.list_ports.comports())
+        print(f"Ports: {ports}")
         for p in ports:
-            if "XXX" in p.description:
+            if "Silicon Labs" in p.description:
                 self.__port = p.name
         print(f"DSI-7: {self.__port}")
 
     def run_dsi2lsl(self):
         try:
-            dsi2lsl_path = join("dsi2lsl", "dsi2lsl.exe")
-            subprocess.run(
+            print(os.listdir())
+            dsi2lsl_path = r"C:\Users\ajrbe\Documents\Git\bci-model-uploader\src\run_models\dsi2lsl\dsi2lsl.exe"
+            self.__dsi2lsl_process = subprocess.Popen(
                 [
                     dsi2lsl_path,
                     f'port={self.__port}',
                     'lsl-stream-name=DSI7',
                     'montage=F4,C4,S1,S3,C3,F3'
-                ],
-                check=True
+                ]
             )
         except subprocess.CalledProcessError as e:
             print(f"DSI2LSL failed with error code {e.returncode}")
@@ -69,7 +76,7 @@ class Classifier:
             self.__thread.join()
 
         self.__number_of_channels = len( model.get_use_channels_names() )
-        self.__class_names = model.get_output_classes()
+        self.__class_names = model.get_output_class_names()
 
         # update model
         self.__model = GenericEEGPTModel(
@@ -88,6 +95,7 @@ class Classifier:
         self.__thread.start()
 
     def __classifier_step_loop(self):
+        print("Step")
         while self.__running:
             chunk, timestamps = self.inlet.pull_chunk()
             if not timestamps:
@@ -113,5 +121,6 @@ class Classifier:
                 self.current_classification = self.__class_names[predicted_class]
                 self.current_confidence = confidence * 100
 
-    def get_classification( self ):
-        return self.current_classification, self.current_confidence
+    def get_classification(self) -> tuple[int, float]:
+        key = next((k for k, v in self.__class_names.items() if v == self.current_classification), 0)
+        return key, self.current_confidence

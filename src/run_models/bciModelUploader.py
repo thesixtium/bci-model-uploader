@@ -1,11 +1,27 @@
+print("Starting Imports")
 import time
 import random
 
+print(".applicationDictionary")
 from .applicationDictionary import ApplicationDictionary
+print(".nfcReader")
 from .nfcReader import NfcReader
+print(".classifier")
 from .classifier import Classifier
+print("Done Imports")
 
 ## Todo: Care about the user number
+"""
+import sys, os
+
+# Works both frozen (PyInstaller) and in development
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+CHECKPOINTS_DIR = os.path.join(BASE_DIR, "checkpoints")
+"""
 
 class BciModelUploader:
     def __init__(
@@ -19,6 +35,7 @@ class BciModelUploader:
         self.classifier = classifier
 
     def run( self ):
+        print("Run")
         while True:
             if self.nfc_reader.is_new_data():
                 # Get User ID and Application Number
@@ -40,7 +57,7 @@ class BciModelUploader:
             if self.classifier is not None and self.classifier.is_ready():
                 classification = self.classifier.get_classification()
                 print( classification )
-                self.application_dictionary.send_classification( classification )
+                self.application_dictionary.send_classification( classification[0] )
             else:
                 self.application_dictionary.send_classification( random.randint( 0, 1 ) )
 

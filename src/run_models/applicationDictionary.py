@@ -23,6 +23,6 @@ class ApplicationDictionary:
     def get_model( self ):
         return self.application_dictionary[ self.current_application ].get_model()
 
-    def send_classification( self, classification ):
+    def send_classification( self, classification: int ):
         if self.current_application is not None:
             self.application_dictionary[ self.current_application ].receive_classification( classification )

@@ -1,6 +1,5 @@
 import queue
 import threading
-import time
 import tkinter as tk
 from tkinter import font as tkfont
 
@@ -51,6 +50,7 @@ class DummyMiApplication2(ApplicationClass):
         self._thread = None
 
     def receive_classification(self, classification: int):
+        print(f"Got {classification}")
         self._active_class = classification
         self._enqueue(self._refresh_labels)
 

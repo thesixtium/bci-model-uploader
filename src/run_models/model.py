@@ -3,14 +3,16 @@ class Model:
             self,
             model_name: str,
             use_channels_names: list[str],
-            output_classes: int,
+            output_class_names: dict[int, str],
             max_lr: float,
             steps_per_epoch: int,
-            max_epochs: int
+            max_epochs: int,
+
     ):
         self.model_name = model_name
         self.use_channels_names = use_channels_names
-        self.output_classes = output_classes
+        self.output_class_names = output_class_names
+        self.output_classes = len(output_class_names)
         self.max_lr = max_lr
         self.steps_per_epoch = steps_per_epoch
         self.max_epochs = max_epochs
@@ -32,3 +34,6 @@ class Model:
 
     def get_max_epochs(self):
         return self.steps_per_epoch
+
+    def get_output_class_names(self):
+        return self.output_class_names
