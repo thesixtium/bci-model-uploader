@@ -1,4 +1,3 @@
-import os
 import time
 import torch
 import serial
@@ -8,11 +7,10 @@ import collections
 import serial.tools.list_ports
 
 import numpy as np
-from os.path import join
-
 from pylsl import StreamInlet, resolve_byprop
 from src.core.genericEEGPTModel import GenericEEGPTModel
 from src.run_models.model import Model
+from src.core.getLibPaths import GetLibPaths
 
 
 class Classifier:
@@ -28,6 +26,7 @@ class Classifier:
         self.__model = None
         self.__port = None
         self.__dsi2lsl_process = None
+        self.__glp = GetLibPaths()
 
         self.find_dsi7_port()
         print("Running DSI2LSL")
@@ -52,8 +51,7 @@ class Classifier:
 
     def run_dsi2lsl(self):
         try:
-            print(os.listdir())
-            dsi2lsl_path = r"C:\Users\ajrbe\Documents\Git\bci-model-uploader\src\run_models\dsi2lsl\dsi2lsl.exe"
+            dsi2lsl_path = self.__glp.get_dsi2lsl_path() / "dsi2lsl.exe"
             self.__dsi2lsl_process = subprocess.Popen(
                 [
                     dsi2lsl_path,
@@ -80,7 +78,7 @@ class Classifier:
 
         # update model
         self.__model = GenericEEGPTModel(
-            load_path=f"checkpoints/{model.get_model_name()}",
+            load_path= self.__glp.get_checkpoints_path() / model.get_model_name(),
             use_channels_names=model.get_use_channels_names(),
             output_classes=model.get_output_classes(),
             max_lr=model.get_max_lr(),

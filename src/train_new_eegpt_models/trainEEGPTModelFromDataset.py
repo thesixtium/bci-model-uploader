@@ -8,6 +8,7 @@ from datasets.BNCI2015_001 import DatasetBNCI2015_001
 from src.train_new_eegpt_models.moabbMotorImageryDataLoader import MoabbMotorImageryDataLoader
 from src.train_new_eegpt_models.csvDataLoader import CsvEegDataLoader
 from src.core.generic_eegpt_model_lib.metricMethods import metrics_display, get_latest_metrics_csv
+from src.core.getLibPaths import GetLibPaths
 
 """
 X shape: [n_trials, n_channels, n_timepoints]
@@ -29,11 +30,20 @@ The number of individual voltage samples recorded per electrode per trial.
 At 300Hz over 4 seconds that's 1200 raw samples, or 1024 after resampling.
 """
 
-def train_EEGPT_model_from_dataset( model_name, data, use_channels_names, base_model, max_epochs, max_lr, output_classes):
+def train_EEGPT_model_from_dataset(
+        model_name,
+        data,
+        use_channels_names,
+        base_model,
+        max_epochs,
+        max_lr,
+        output_classes,
+        glp
+):
         seed_torch(7_11_2002)
 
-        checkpoints_path = r'C:\Users\ajrbe\Documents\Git\bci-model-uploader\src\checkpoints'
-        logs_path = r"C:\Users\ajrbe\Documents\Git\bci-model-uploader\src\logs"
+        checkpoints_path = glp.get_checkpoints_path()
+        logs_path = glp.get_logs_path()
 
         # init model
         model = GenericEEGPTModel(
@@ -80,11 +90,13 @@ def train_EEGPT_model_from_dataset( model_name, data, use_channels_names, base_m
         if os.path.exists(f"{checkpoints_path}/{model_name}.ckpt"):
             os.remove(f"{checkpoints_path}/{model_name}.ckpt")
         os.rename(f"{checkpoints_path}/last.ckpt", f"{checkpoints_path}/{model_name}.ckpt")
-        metrics_display(get_latest_metrics_csv(logs_path, model_name), model_name)
+        metrics_display(get_latest_metrics_csv(logs_path, model_name), model_name, glp.get_imgs_path() )
 
 if __name__ == '__main__':
     seed_torch(7_11_2002)
-    base_model = r"C:\Users\ajrbe\Documents\Git\bci-model-uploader\src\checkpoints\eegpt_mcae_58chs_4s_large4E.ckpt"
+    glp = GetLibPaths()
+
+    base_model = glp.get_checkpoints_path() / "eegpt_mcae_58chs_4s_large4E.ckpt"
 
     csv_path = "datasets/DSI7_Dummy.csv"
     loaded_data = CsvEegDataLoader(
@@ -100,7 +112,8 @@ if __name__ == '__main__':
         base_model,
         20,
         4e-4,
-        2
+        2,
+        glp
     )
 
     """datasets = [DatasetBNCI2015_001(), DatasetBNCI2014_004()]

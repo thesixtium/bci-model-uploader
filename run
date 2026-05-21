@@ -1,0 +1,1 @@
+pyinstaller src/main.py --name bci-model-uploader --add-data "src/core;src/core" --add-data "src/run_models;src/run_models" --exclude-module src.record_data --exclude-module src.testing --exclude-module src.train_new_eegpt_models --noconfirm

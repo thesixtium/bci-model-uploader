@@ -24,7 +24,7 @@ def get_latest_metrics_csv(save_dir: str, model_name: str) -> str:
 
     return os.path.join(csv_log_dir, latest, "metrics.csv")
 
-def metrics_display( csv_path, model_name ):
+def metrics_display( csv_path, model_name, img_path ):
     df = pd.read_csv(csv_path)
 
     # --- Separate rows: train rows have train_loss, valid rows have valid_loss ---
@@ -156,7 +156,7 @@ def metrics_display( csv_path, model_name ):
         color="#e0e0e0", y=0.965,
     )
 
-    out_path = f"{model_name}_training_metrics.png"
+    out_path = img_path / f"{model_name}_training_metrics.png"
     plt.savefig(out_path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
     print(f"Saved → {out_path}")
     #plt.show()

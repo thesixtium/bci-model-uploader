@@ -1,7 +1,7 @@
 /.idea
 /src/__pycache__
 /src/logs
-src/checkpoints/eegpt_mcae_58chs_4s_large4E.ckpt
+lib/checkpoints/eegpt_mcae_58chs_4s_large4E.ckpt
 /src/C-/Users/ajrbe/mne_data
 /src/core/generic_eegpt_model_lib/__pycache__
 /src/record_data/lab_recorder
@@ -10,6 +10,7 @@ src/checkpoints/eegpt_mcae_58chs_4s_large4E.ckpt
 /src/core/__pycache__
 __pycache__/
 
-/src/run_models/dsi2lsl
+/lib/dsi2lsl
 /src/testing
 /src/train_new_eegpt_models/C-
+/dist
