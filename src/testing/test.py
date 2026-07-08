@@ -1,24 +1,69 @@
-from pathlib import Path
+import time
+import random
+import numpy as np
+from pylsl import StreamInfo, StreamOutlet
 
+# --- Configuration ---
+N_CHANNELS = 8
+SAMPLE_RATE = 250  # Hz
+EEG_STREAM_NAME = "MyEEGStream"
+MARKER_STREAM_NAME = "MyMarkerStream"
 
-def get_dsi2lsl_path() -> Path:
-    """
-    Returns the absolute path to the dsi2lsl directory.
-    Works from any file within the src folder or its subdirectories.
-    """
-    # Start from this file's location and walk up until we find the project root
-    # (identified by having both 'src' and 'lib' as siblings)
-    current = Path(__file__).resolve().parent
+# --- EEG Stream ---
+eeg_info = StreamInfo(
+    name=EEG_STREAM_NAME,
+    type="EEG",
+    channel_count=N_CHANNELS,
+    nominal_srate=SAMPLE_RATE,
+    channel_format="float32",
+    source_id="fake_eeg_001"
+)
+eeg_outlet = StreamOutlet(eeg_info)
 
-    while current != current.parent:  # Stop at filesystem root
-        if (current / "src").is_dir() and (current / "lib").is_dir():
-            # Found the project root
-            return (current / "lib" / "dsi2lsl").resolve()
-        current = current.parent
+# --- Marker Stream ---
+marker_info = StreamInfo(
+    name=MARKER_STREAM_NAME,
+    type="Markers",
+    channel_count=1,
+    nominal_srate=0,
+    channel_format="string",
+    source_id="fake_markers_001"
+)
+marker_outlet = StreamOutlet(marker_info)
 
-    raise FileNotFoundError("Could not find project root (directory containing both 'src' and 'lib')")
+print(f"EEG stream online:    '{EEG_STREAM_NAME}' ({N_CHANNELS} ch @ {SAMPLE_RATE} Hz)")
+print(f"Marker stream online: '{MARKER_STREAM_NAME}'")
+print("Streaming... Ctrl+C to stop.\n")
 
+MARKERS = ["stimulus/left", "stimulus/right", "response/correct", "response/error"]
 
-if __name__ == "__main__":
-    path = get_dsi2lsl_path()
-    print(f"dsi2lsl path: {path}")
+interval        = 1.0 / SAMPLE_RATE
+next_sample_t   = time.perf_counter()
+next_marker_t   = time.perf_counter() + random.uniform(1.5, 3.0)
+
+try:
+    while True:
+        now = time.perf_counter()
+
+        # --- Send EEG sample if due ---
+        if now >= next_sample_t:
+            # Simple pink-ish noise: 8 channels, ~50 µV amplitude
+            sample = (np.random.randn(N_CHANNELS) * 50).tolist()
+            eeg_outlet.push_sample(sample)
+            next_sample_t += interval
+
+        # --- Send marker if due ---
+        if now >= next_marker_t:
+            label = random.choice(MARKERS)
+            marker_outlet.push_sample([label])
+            print(f"Marker: {label}")
+            next_marker_t = now + random.uniform(1.5, 3.0)
+
+        # Sleep just under one sample period to avoid busy-waiting too hard
+        sleep_until = min(next_sample_t, next_marker_t)
+        remaining = sleep_until - time.perf_counter()
+        if remaining > 0.0005:
+            time.sleep(remaining - 0.0005)
+
+except KeyboardInterrupt:
+    print("\nStopped.")
