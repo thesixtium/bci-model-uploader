@@ -8,28 +8,51 @@ from src.core.eegDataset import EegDataset
 from .datasets.dataset import Dataset
 
 
-def temporal_interpolation(x, desired_sequence_length, mode='nearest', use_avg=True):
-    # print(x.shape)
-    # squeeze and unsqueeze because these are done before batching
+def crop_middle(x, native_sample_rate, crop_seconds):
+    """
+    Crop the middle `crop_seconds` out of each trial.
+    x: [n_trials, n_channels, n_timepoints] at native_sample_rate Hz
+    """
+    crop_samples = int(round(native_sample_rate * crop_seconds))
+    total_samples = x.shape[-1]
+
+    if total_samples < crop_samples:
+        raise ValueError(
+            f"Trial has {total_samples} samples ({total_samples / native_sample_rate:.2f}s "
+            f"@ {native_sample_rate}Hz), which is shorter than the required "
+            f"{crop_seconds}s crop window."
+        )
+
+    start = (total_samples - crop_samples) // 2
+    return x[..., start:start + crop_samples]
+
+
+def resample_to_target(x, target_samples, mode='nearest', use_avg=True):
+    """
+    Resample a FIXED-DURATION window (the middle crop) to exactly
+    `target_samples` timepoints. Because the input duration is now known and
+    constant (crop_seconds), this acts as a genuine resample rather than an
+    arbitrary stretch/squash of a variable-length trial.
+    """
     if use_avg:
         x = x - torch.mean(x, dim=-2, keepdim=True)
     if len(x.shape) == 2:
-        return torch.nn.functional.interpolate(x.unsqueeze(0), desired_sequence_length, mode=mode).squeeze(0)
-    # Supports batch dimension
+        return torch.nn.functional.interpolate(x.unsqueeze(0), target_samples, mode=mode).squeeze(0)
     elif len(x.shape) == 3:
-        return torch.nn.functional.interpolate(x, desired_sequence_length, mode=mode)
+        return torch.nn.functional.interpolate(x, target_samples, mode=mode)
     else:
-        raise ValueError("TemporalInterpolation only support sequence of single dim channels with optional batch")
+        raise ValueError("resample_to_target only supports sequences of single dim channels with optional batch")
 
-def get_data_single_subject(X, y, target_sample=1024):
-    # X shape: [n_trials, n_channels, n_timepoints]
+
+def get_data_single_subject(X, y, native_sample_rate, crop_seconds=4, target_samples=1024):
+    # X shape: [n_trials, n_channels, n_timepoints] at native_sample_rate Hz
     # y shape: [n_trials]
 
     x = torch.FloatTensor(X)
     y = torch.LongTensor(y)
 
-    if target_sample > 0:
-        x = temporal_interpolation(x, target_sample)
+    x = crop_middle(x, native_sample_rate, crop_seconds)
+    x = resample_to_target(x, target_samples)
 
     train_x, test_x, train_y, test_y = train_test_split(
         x, y, test_size=0.2, stratify=y
@@ -40,17 +63,18 @@ def get_data_single_subject(X, y, target_sample=1024):
 
     return EegDataset(train_x, train_y), \
            EegDataset(valid_x, valid_y), \
-           EegDataset(test_x,  test_y)
+           EegDataset(test_x, test_y)
+
 
 class MoabbMotorImageryDataLoader:
-    def __init__( self, dataset: Dataset ):
+    def __init__(self, dataset: Dataset):
         paradigm = MotorImagery(
             n_classes=dataset.get_n_classes(),
             fmin=dataset.get_fmin(),
             fmax=dataset.get_fmax(),
             tmin=dataset.get_tmin(),
-            tmax=dataset.get_tmax(),          # 4 second trials
-            resample=dataset.get_resample()     # resample to 256Hz → 1024 timepoints (256 * 4)
+            tmax=dataset.get_tmax(),
+            resample=None  # keep native rate; crop + resample happens manually below
         )
 
         X, y_str, metadata = paradigm.get_data(dataset=dataset.get_dataset(), subjects=[1])
@@ -64,7 +88,9 @@ class MoabbMotorImageryDataLoader:
         train_dataset, valid_dataset, test_dataset = get_data_single_subject(
             X=X,
             y=y,
-            target_sample=256 * 4
+            native_sample_rate=dataset.get_native_sample_rate(),
+            crop_seconds=dataset.get_crop_seconds(),
+            target_samples=dataset.get_target_samples(),
         )
 
         self.train_loader = torch.utils.data.DataLoader(

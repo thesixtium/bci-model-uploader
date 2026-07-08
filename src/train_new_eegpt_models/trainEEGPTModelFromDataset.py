@@ -3,8 +3,7 @@ import pytorch_lightning as pl
 from src.core.genericEEGPTModel import GenericEEGPTModel
 from src.core.generic_eegpt_model_lib.modelMethods import seed_torch
 from pytorch_lightning import loggers as pl_loggers
-from datasets.BNCI2014_004 import DatasetBNCI2014_004
-from datasets.BNCI2015_001 import DatasetBNCI2015_001
+from datasets.Schirrmeister2017 import DatasetSchirrmeister2017
 from src.train_new_eegpt_models.moabbMotorImageryDataLoader import MoabbMotorImageryDataLoader
 from src.train_new_eegpt_models.csvDataLoader import CsvEegDataLoader
 from src.core.generic_eegpt_model_lib.metricMethods import metrics_display, get_latest_metrics_csv
@@ -98,7 +97,7 @@ if __name__ == '__main__':
 
     base_model = glp.get_checkpoints_path() / "eegpt_mcae_58chs_4s_large4E.ckpt"
 
-    csv_path = "datasets/DSI7_Dummy.csv"
+    """csv_path = "datasets/DSI7_Dummy.csv"
     loaded_data = CsvEegDataLoader(
         csv_path,
         ["right", "left"],
@@ -114,9 +113,9 @@ if __name__ == '__main__':
         4e-4,
         2,
         glp
-    )
+    )"""
 
-    """datasets = [DatasetBNCI2015_001(), DatasetBNCI2014_004()]
+    datasets = [DatasetSchirrmeister2017()]
     for dataset in datasets:
         loaded_data = MoabbMotorImageryDataLoader( dataset )
 
@@ -128,5 +127,5 @@ if __name__ == '__main__':
             20,
             4e-4,
             dataset.get_n_classes()
-        )"""
+        )
 
