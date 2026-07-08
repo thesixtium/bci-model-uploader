@@ -1,7 +1,9 @@
 from moabb.paradigms import MotorImagery
 from sklearn.preprocessing import LabelEncoder
 import math
+import numpy as np
 import torch
+from scipy.signal import resample as scipy_resample
 from sklearn.model_selection import train_test_split
 from src.core.eegDataset import EegDataset
 
@@ -27,21 +29,30 @@ def crop_middle(x, native_sample_rate, crop_seconds):
     return x[..., start:start + crop_samples]
 
 
-def resample_to_target(x, target_samples, mode='nearest', use_avg=True):
+def resample_to_target(x, target_samples, use_avg=True):
     """
-    Resample a FIXED-DURATION window (the middle crop) to exactly
-    `target_samples` timepoints. Because the input duration is now known and
-    constant (crop_seconds), this acts as a genuine resample rather than an
-    arbitrary stretch/squash of a variable-length trial.
+    Properly resample a FIXED-DURATION window (the middle crop) to exactly
+    `target_samples` timepoints.
+
+    Because the input duration is now known and constant (crop_seconds), this
+    is a genuine sample-rate conversion (e.g. 500Hz -> 256Hz over the same 4s
+    window), NOT an arbitrary stretch/squash of a variable-length trial.
+
+    Uses scipy.signal.resample, which performs FFT-based band-limited
+    resampling (implicitly low-pass filters before decimating), avoiding the
+    aliasing artifacts that naive nearest/linear interpolation (e.g.
+    torch.nn.functional.interpolate) introduces when downsampling.
     """
+    if len(x.shape) not in (2, 3):
+        raise ValueError("resample_to_target only supports sequences of single dim channels with optional batch")
+
     if use_avg:
         x = x - torch.mean(x, dim=-2, keepdim=True)
-    if len(x.shape) == 2:
-        return torch.nn.functional.interpolate(x.unsqueeze(0), target_samples, mode=mode).squeeze(0)
-    elif len(x.shape) == 3:
-        return torch.nn.functional.interpolate(x, target_samples, mode=mode)
-    else:
-        raise ValueError("resample_to_target only supports sequences of single dim channels with optional batch")
+
+    x_np = x.detach().cpu().numpy()
+    x_resampled = scipy_resample(x_np, target_samples, axis=-1)
+
+    return torch.from_numpy(np.ascontiguousarray(x_resampled)).to(dtype=x.dtype)
 
 
 def get_data_single_subject(X, y, native_sample_rate, crop_seconds=4, target_samples=1024):
