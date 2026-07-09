@@ -85,10 +85,14 @@ class MoabbMotorImageryDataLoader:
             fmax=dataset.get_fmax(),
             tmin=dataset.get_tmin(),
             tmax=dataset.get_tmax(),
+            channels=dataset.get_use_channels_names(),
             resample=None  # keep native rate; crop + resample happens manually below
         )
 
-        X, y_str, metadata = paradigm.get_data(dataset=dataset.get_dataset(), subjects=[1])
+        X, y_str, metadata = paradigm.get_data(
+            dataset=dataset.get_dataset(),
+            subjects=dataset.get_subjects()
+        )
 
         le = LabelEncoder()
         y = le.fit_transform(y_str)
@@ -112,7 +116,7 @@ class MoabbMotorImageryDataLoader:
         )
 
         self.valid_loader = torch.utils.data.DataLoader(
-            test_dataset,
+            valid_dataset,
             batch_size=dataset.get_batch_size(),
             num_workers=0,
             shuffle=False

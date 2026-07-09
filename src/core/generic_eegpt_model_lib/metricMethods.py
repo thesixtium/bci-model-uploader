@@ -156,6 +156,7 @@ def metrics_display( csv_path, model_name, img_path ):
         color="#e0e0e0", y=0.965,
     )
 
+    img_path.mkdir(parents=True, exist_ok=True)
     out_path = img_path / f"{model_name}_training_metrics.png"
     plt.savefig(out_path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
     print(f"Saved → {out_path}")

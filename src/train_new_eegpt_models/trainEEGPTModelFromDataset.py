@@ -126,6 +126,7 @@ if __name__ == '__main__':
             base_model,
             20,
             4e-4,
-            dataset.get_n_classes()
+            dataset.get_n_classes(),
+            glp
         )
 

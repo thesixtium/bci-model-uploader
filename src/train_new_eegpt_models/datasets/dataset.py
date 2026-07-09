@@ -9,7 +9,7 @@ class Dataset:
             tmin,          # Start of the trial window (relative to cue), in seconds
             tmax,          # End of the trial window (relative to cue), in seconds
             sample_rate,   # Native/original sampling rate of the raw recording, in Hz
-            use_channels_names,
+            use_channels_names
     ):
         self.name = name
         self.dataset = dataset
@@ -78,3 +78,6 @@ class Dataset:
 
     def get_use_channels_names(self):
         return self.use_channels_names
+
+    def get_subjects(self):
+        return self.dataset.subject_list
