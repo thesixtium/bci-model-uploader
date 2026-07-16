@@ -1,4 +1,6 @@
 import os
+import math
+import torch
 import pytorch_lightning as pl
 from src.core.genericEEGPTModel import GenericEEGPTModel
 from src.core.generic_eegpt_model_lib.modelMethods import seed_torch
@@ -29,6 +31,38 @@ The number of individual voltage samples recorded per electrode per trial.
 At 300Hz over 4 seconds that's 1200 raw samples, or 1024 after resampling.
 """
 
+def _filter_dataloader_excluding_classes(loader, exclude_indices, shuffle):
+    """
+    Rebuild a DataLoader with all trials belonging to `exclude_indices` (a set
+    of integer class labels) dropped. The remaining labels are left exactly
+    as they were - nothing gets reindexed/renumbered, so e.g. if class 2
+    ('rest') survives, it's still labeled 2 afterward, even though class 0
+    ('feet') is gone.
+    """
+    dataset = loader.dataset
+
+    xs, ys = [], []
+    for i in range(len(dataset)):
+        x, y = dataset[i]
+        xs.append(x)
+        ys.append(y)
+
+    x_stack = torch.stack(xs)
+    y_stack = torch.stack(ys) if torch.is_tensor(ys[0]) else torch.as_tensor(ys)
+
+    exclude_tensor = torch.as_tensor(list(exclude_indices), dtype=y_stack.dtype)
+    mask = ~torch.isin(y_stack, exclude_tensor)
+
+    filtered_dataset = torch.utils.data.TensorDataset(x_stack[mask], y_stack[mask])
+
+    return torch.utils.data.DataLoader(
+        filtered_dataset,
+        batch_size=loader.batch_size,
+        num_workers=0,
+        shuffle=shuffle
+    )
+
+
 def train_EEGPT_model_from_dataset(
         model_name,
         data,
@@ -37,12 +71,33 @@ def train_EEGPT_model_from_dataset(
         max_epochs,
         max_lr,
         output_classes,
-        glp
+        glp,
+        exclude_class_names=None
 ):
         seed_torch(7_11_2002)
 
         checkpoints_path = glp.get_checkpoints_path()
         logs_path = glp.get_logs_path()
+
+        train_loader = data.get_train_loader()
+        valid_loader = data.get_valid_loader()
+        steps_per_epoch = data.get_steps_per_epoch()
+
+        if exclude_class_names:
+            class_names = data.get_class_names()  # {index: name}
+            name_to_index = {name: index for index, name in class_names.items()}
+
+            missing = [name for name in exclude_class_names if name not in name_to_index]
+            if missing:
+                raise ValueError(
+                    f"Unknown class name(s) {missing}. Available classes: {list(name_to_index.keys())}"
+                )
+
+            exclude_indices = {name_to_index[name] for name in exclude_class_names}
+
+            train_loader = _filter_dataloader_excluding_classes(train_loader, exclude_indices, shuffle=True)
+            valid_loader = _filter_dataloader_excluding_classes(valid_loader, exclude_indices, shuffle=False)
+            steps_per_epoch = math.ceil(len(train_loader))
 
         # init model
         model = GenericEEGPTModel(
@@ -50,7 +105,7 @@ def train_EEGPT_model_from_dataset(
             use_channels_names=use_channels_names,
             output_classes=output_classes,
             max_lr=max_lr,
-            steps_per_epoch=data.get_steps_per_epoch(),
+            steps_per_epoch=steps_per_epoch,
             max_epochs=max_epochs
         )
 
@@ -82,9 +137,9 @@ def train_EEGPT_model_from_dataset(
                              ]
                              )
 
-        trainer.fit(model, data.get_train_loader(), data.get_valid_loader())
+        trainer.fit(model, train_loader, valid_loader)
 
-        results = trainer.validate(model, data.get_valid_loader())
+        results = trainer.validate(model, valid_loader)
         print(results)
         if os.path.exists(f"{checkpoints_path}/{model_name}.ckpt"):
             os.remove(f"{checkpoints_path}/{model_name}.ckpt")
@@ -127,6 +182,6 @@ if __name__ == '__main__':
             20,
             4e-4,
             dataset.get_n_classes(),
-            glp
+            glp,
+            exclude_class_names=["feet"]
         )
-
