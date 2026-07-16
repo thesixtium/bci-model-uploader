@@ -22,7 +22,7 @@ def run_dsi_streamer():
 def run_dsi2lsl():
     # DSI2LSL
     try:
-        dsi2lsl_path = join("dsi2lsl", "dsi2lsl.exe")
+        dsi2lsl_path = join("dsi2lsl.exe")
         subprocess.run(
             [
                 dsi2lsl_path,
