@@ -21,12 +21,14 @@ class TestingMiApplication(ApplicationClass):
 
         # --- Target-trial / accuracy-logging config ---
         self._trial_duration_ms = int(params.get("trial_duration", 4.0) * 1000)
+        self._classifications_per_trial = max(1, int(params.get("classifications_per_trial", 4)))
         self._csv_path = params.get("csv_path", f"{name}_accuracy_log.csv")
         self._current_target: int | None = None
         self._trial_number = 0
         self._csv_lock = threading.Lock()
         self._csv_file = None
         self._csv_writer = None
+        self._log_tick_ids: list = []
 
         self._root: tk.Tk | None = None
         self._labels: dict = {}
@@ -53,9 +55,13 @@ class TestingMiApplication(ApplicationClass):
         self._close_csv()
 
     def receive_classification(self, classification: int):
+        # NOTE: this no longer logs directly. Logging happens on the app's own
+        # fixed schedule (see _schedule_log_ticks), so the number of rows
+        # written per trial is guaranteed regardless of how often/irregularly
+        # the caller invokes this method. This just records the latest known
+        # classification so a log tick has something current to grab.
         print(f"Got {classification}")
         self._active_class = classification
-        self._log_result(classification)
         self._enqueue(self._refresh_labels)
 
     # ---------------- CSV handling ----------------
@@ -134,6 +140,7 @@ class TestingMiApplication(ApplicationClass):
             pass  # interpreter already destroyed — stop polling
 
     def _on_destroy(self):
+        self._cancel_log_ticks()
         if self._root:
             self._root.destroy()
 
@@ -142,14 +149,52 @@ class TestingMiApplication(ApplicationClass):
     def _new_target(self):
         if not self._classifications:
             return
+        # a new trial is starting — any ticks still pending from the
+        # previous trial must not fire during this one
+        self._cancel_log_ticks()
         self._trial_number += 1
         self._current_target = random.choice(list(self._classifications.keys()))
         self._refresh_labels()
+        self._schedule_log_ticks()
         try:
             if self._root and self._root.winfo_exists():
                 self._root.after(self._trial_duration_ms, self._new_target)
         except tk.TclError:
             pass
+
+    def _schedule_log_ticks(self):
+        """Schedule exactly self._classifications_per_trial log events, evenly
+        spaced across the trial window. This is what guarantees the count —
+        it no longer depends on how often receive_classification() is called."""
+        if not (self._root and self._root.winfo_exists()):
+            return
+        n = self._classifications_per_trial
+        interval = self._trial_duration_ms / n
+        for k in range(1, n + 1):
+            # clamp so the last tick fires strictly before the next trial's
+            # _new_target reset, even if rounding pushes it to the boundary
+            delay = min(round(interval * k), max(self._trial_duration_ms - 1, 0))
+            try:
+                tid = self._root.after(delay, self._log_tick)
+                self._log_tick_ids.append(tid)
+            except tk.TclError:
+                pass
+
+    def _cancel_log_ticks(self):
+        if self._root:
+            for tid in self._log_tick_ids:
+                try:
+                    self._root.after_cancel(tid)
+                except tk.TclError:
+                    pass
+        self._log_tick_ids = []
+
+    def _log_tick(self):
+        """Fires on the app's own schedule. Logs whatever classification is
+        currently known (self._active_class), which may be a repeat of the
+        last one if no new classification has come in — that's expected and
+        is what guarantees a fixed count per trial."""
+        self._log_result(self._active_class)
 
     # ---------------- UI ----------------
 
