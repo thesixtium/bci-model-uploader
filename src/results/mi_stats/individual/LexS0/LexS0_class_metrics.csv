@@ -1,5 +1,0 @@
-subject,class,precision,recall,f1,support
-LexS0,Feet,0.0,0.0,0.0,32
-LexS0,Left Hand,0.3170731707317073,0.6341463414634146,0.42276422764227645,41
-LexS0,Rest,0.0,0.0,0.0,26
-LexS0,Right Hand,0.19444444444444445,0.35,0.25,20

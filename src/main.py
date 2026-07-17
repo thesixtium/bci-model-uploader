@@ -18,12 +18,12 @@ application_dict = ApplicationDictionary(
             model=Model(
             "Schirrmeister2017.ckpt",
             ["F4", "C4", "P4", "P3", "C3", "F3"],
-            {0: 'feet', 1: 'left_hand', 2: 'rest', 3: 'right_hand'},
+            {1: 'left_hand', 2: 'rest', 3: 'right_hand'},
             0.01,
             1,
             20
             ),
-            params={"classifications": {0: 'feet', 1: 'left_hand', 2: 'rest', 3: 'right_hand'}},
+            params={"classifications": {1: 'left_hand', 2: 'rest', 3: 'right_hand'}},
         ),
         #1: DummyMiApplication2(
         #    name="MyApp",
