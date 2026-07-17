@@ -10,6 +10,7 @@ from src.train_new_eegpt_models.moabbMotorImageryDataLoader import MoabbMotorIma
 from src.train_new_eegpt_models.csvDataLoader import CsvEegDataLoader
 from src.core.generic_eegpt_model_lib.metricMethods import metrics_display, get_latest_metrics_csv
 from src.core.getLibPaths import GetLibPaths
+import tensorboard
 
 """
 X shape: [n_trials, n_channels, n_timepoints]
@@ -179,7 +180,7 @@ if __name__ == '__main__':
             loaded_data,
             dataset.get_use_channels_names(),
             base_model,
-            20,
+            50,
             4e-4,
             dataset.get_n_classes(),
             glp,
