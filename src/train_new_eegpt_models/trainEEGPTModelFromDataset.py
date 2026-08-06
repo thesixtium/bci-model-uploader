@@ -7,6 +7,7 @@ from src.core.generic_eegpt_model_lib.modelMethods import seed_torch
 from pytorch_lightning import loggers as pl_loggers
 from datasets.Schirrmeister2017 import DatasetSchirrmeister2017
 from src.train_new_eegpt_models.moabbMotorImageryDataLoader import MoabbMotorImageryDataLoader
+from src.train_new_eegpt_models.moabbSSVEPDataLoader import MoabbSSVEPDataLoader
 from src.train_new_eegpt_models.csvDataLoader import CsvEegDataLoader
 from src.core.generic_eegpt_model_lib.metricMethods import metrics_display, get_latest_metrics_csv
 from src.core.getLibPaths import GetLibPaths
@@ -72,6 +73,35 @@ def _num_trials(loader):
     return len(loader.dataset)
 
 
+def _validate_channel_count(loader, use_channels_names, model_name):
+    """
+    Peek at one batch to confirm the data's channel axis actually matches
+    len(use_channels_names) before spending an entire training run on it.
+
+    This matters regardless of paradigm (MI or SSVEP): GenericEEGPTModel
+    indexes channels positionally, so if a data loader's channel selection
+    doesn't exactly match use_channels_names — in count AND order — the
+    model trains against the wrong electrode mapping and the mismatch will
+    only show up later as unexplained accuracy loss when running live.
+    """
+    if loader is None:
+        return
+
+    sample_x, _ = next(iter(loader))
+    actual_channels = sample_x.shape[1]  # [batch, channels, timepoints]
+    expected_channels = len(use_channels_names)
+
+    if actual_channels != expected_channels:
+        raise ValueError(
+            f"{model_name}: training data has {actual_channels} channel(s) "
+            f"but use_channels_names has {expected_channels} "
+            f"({use_channels_names}). The data loader's channel selection "
+            f"must match the channel list the model is being configured "
+            f"with, or inference against a real device will be reading the "
+            f"wrong electrodes into the wrong input slots."
+        )
+
+
 def _write_trial_counts(data, train_loader, valid_loader, out_dir):
     """Write the number of train/valid/test trials actually used for this
     run to trial_counts.txt in `out_dir` (the same directory as the
@@ -122,6 +152,11 @@ def train_EEGPT_model_from_dataset(
         train_loader = data.get_train_loader()
         valid_loader = data.get_valid_loader()
         steps_per_epoch = data.get_steps_per_epoch()
+
+        # Works the same whether `data` came from a motor-imagery loader or
+        # an SSVEP loader - both are required to hand back exactly
+        # use_channels_names, in that order, so this check applies as-is.
+        _validate_channel_count(train_loader, use_channels_names, model_name)
 
         if exclude_class_names:
             class_names = data.get_class_names()  # {index: name}
@@ -194,27 +229,38 @@ if __name__ == '__main__':
 
     base_model = glp.get_checkpoints_path() / "eegpt_mcae_58chs_4s_large4E.ckpt"
 
-    """csv_path = "datasets/DSI7_Dummy.csv"
-    loaded_data = CsvEegDataLoader(
-        csv_path,
-        ["right", "left"],
-        150
-    )
+    # Each entry pairs a Dataset config with the moabb data loader that
+    # knows how to pull it. Motor imagery and SSVEP use different moabb
+    # paradigms under the hood (MoabbMotorImageryDataLoader vs
+    # MoabbSSVEPDataLoader), but everything downstream — crop/resample,
+    # channel enforcement, splitting, and train_EEGPT_model_from_dataset
+    # itself — is identical, so both kinds of dataset can be trained in the
+    # same loop.
+    runs = [
+        {
+            "dataset": DatasetSchirrmeister2017(),
+            "loader_cls": MoabbMotorImageryDataLoader,
+            "exclude_class_names": ["feet"],
+        },
+        # Add SSVEP datasets the same way: define a Dataset config exposing
+        # the same interface as the MI ones (get_dataset, get_fmin/get_fmax,
+        # get_use_channels_names, etc.), just backed by an SSVEP dataset
+        # from moabb.datasets (e.g. Wang2016, Nakanishi2015, MAMEM1) with
+        # use_channels_names restricted to the occipital electrodes you'll
+        # actually run inference with, then pair it with
+        # MoabbSSVEPDataLoader:
+        #
+        # {
+        #     "dataset": DatasetWang2016(),
+        #     "loader_cls": MoabbSSVEPDataLoader,
+        #     "exclude_class_names": None,
+        # },
+    ]
 
-    train_EEGPT_model_from_dataset(
-        "DSI7_Dummy",
-        loaded_data,
-        ["F4", "C4", "P4", "P3", "C3", "F3"],
-        base_model,
-        20,
-        4e-4,
-        2,
-        glp
-    )"""
-
-    datasets = [DatasetSchirrmeister2017()]
-    for dataset in datasets:
-        loaded_data = MoabbMotorImageryDataLoader( dataset )
+    for run in runs:
+        dataset = run["dataset"]
+        loader_cls = run["loader_cls"]
+        loaded_data = loader_cls(dataset)
 
         train_EEGPT_model_from_dataset(
             dataset.get_name(),
@@ -225,5 +271,5 @@ if __name__ == '__main__':
             4e-4,
             dataset.get_n_classes(),
             glp,
-            exclude_class_names=["feet"]
+            exclude_class_names=run.get("exclude_class_names"),
         )

@@ -1,10 +1,12 @@
 import os
+
+from sympy.benchmarks.bench_meijerint import sigma1
+
 print(os.listdir())
 
 from src.run_models.bciModelUploader import BciModelUploader
-from src.run_models.dummyMiApplication1 import DummyMiApplication1
-from src.run_models.dummyMiApplication2 import DummyMiApplication2
 from src.run_models.testingMiApplication import TestingMiApplication
+from src.run_models.testingSsvepApplication import TestingSsvepApplication
 from src.run_models.nfcReader import NfcReader
 from src.run_models.applicationDictionary import ApplicationDictionary
 from src.run_models.model import Model
@@ -25,20 +27,31 @@ application_dict = ApplicationDictionary(
             ),
             params={"classifications": {1: 'left_hand', 2: 'rest', 3: 'right_hand'}},
         ),
-        #1: DummyMiApplication2(
-        #    name="MyApp",
-        #    model=Model(
-        #        "DSI7_Dummy.ckpt",
-        #        ["F4", "C4", "P4", "P3", "C3", "F3"],
-        #        {0: "left_hand", 1: "right_hand"},
-        #        0.01,
-        #        1,
-        #        20
-        #    ),
-        #    params={"classifications": {0: "left_hand", 1: "right_hand"}},
-        #)
+        1: TestingSsvepApplication(
+            name="ssvepS1",
+            model=Model(
+                "SSVEP_Model.ckpt",
+                ["O1", "O2", "Oz", "POz"],
+                {1: "freq_7_5hz", 2: "freq_8_57hz", 3: "freq_10hz", 4: "freq_12hz"},
+                0.01,
+                1,
+                20
+            ),
+            params={
+                "classifications": {
+                    1: "freq_7_5hz",
+                    2: "freq_8_57hz",
+                    3: "freq_10hz",
+                    4: "freq_12hz",
+                },
+                "frequencies": {1: 7.5, 2: 8.57, 3: 10.0, 4: 12.0},
+            },
+        ),
     }
 )
+
+am I sure the DSI channels are being read at the correct order? Like is s1
+mapping correctly?
 
 print("nfc_reader")
 nfc_reader = NfcReader()
