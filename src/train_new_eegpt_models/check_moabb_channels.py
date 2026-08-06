@@ -2,16 +2,21 @@
 check_moabb_channels.py
 
 Given a list of channel names, checks every Motor Imagery AND SSVEP dataset
-registered in MOABB and prints the name of each dataset that:
+registered in MOABB and prints (to the console AND to an output file) the
+name of each dataset that:
   1. has a channel set equal to, or a superset of, the specified channel
      list, AND
   2. has a native sampling rate >= MIN_SAMPLING_RATE_HZ (see below).
+
+Every dataset checked is reported either way (MATCH, no match, or ERROR) —
+the output file is a full log of the run, not just the matches.
 
 Usage:
     1. Edit MY_CHANNELS below with the channel names you care about.
     2. Edit MIN_SAMPLING_RATE_HZ if your target sample rate differs from the
        default (see the comment above it for how that default was picked).
-    3. Run: python check_moabb_channels.py
+    3. Edit OUTPUT_FILE if you want the log written somewhere else.
+    4. Run: python check_moabb_channels.py
 
 Notes:
     - Comparison is case-insensitive and ignores leading/trailing whitespace.
@@ -26,6 +31,9 @@ Notes:
       i.e. the NATIVE rate before any resampling done later in the training
       pipeline (see resample_to_target in eegPreprocessing.py).
 """
+
+import sys
+from datetime import datetime
 
 from moabb.paradigms import MotorImagery, SSVEP
 
@@ -64,6 +72,25 @@ PARADIGMS = [
     ("SSVEP", SSVEP()),
 ]
 
+# Where the full log of this run gets written, in addition to the console.
+OUTPUT_FILE = "moabb_channel_check_results.txt"
+
+
+class Tee:
+    """Mirrors writes to multiple streams (e.g. stdout + a log file) so a
+    single print() call shows up in both places at once."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for s in self.streams:
+            s.write(data)
+
+    def flush(self):
+        for s in self.streams:
+            s.flush()
+
 
 def normalize(names):
     """Lowercase + strip whitespace for robust comparison."""
@@ -87,13 +114,14 @@ def get_dataset_channels_and_sfreq(dataset):
     raise RuntimeError("Could not find any raw data to extract channel names/sfreq from.")
 
 
-def check_paradigm(label, paradigm, wanted):
+def check_paradigm(label, paradigm, wanted, out):
     datasets = paradigm.datasets
 
-    print(f"Checking {len(datasets)} MOABB {label} datasets...")
-    print("-" * 60)
+    print(f"Checking {len(datasets)} MOABB {label} datasets...", file=out)
+    print("-" * 60, file=out)
 
     matches = []
+    all_results = []  # (name, status, detail) for every dataset, match or not
 
     for dataset in datasets:
         name = type(dataset).__name__
@@ -105,8 +133,9 @@ def check_paradigm(label, paradigm, wanted):
             sfreq_ok = sfreq >= MIN_SAMPLING_RATE_HZ
 
             if channels_ok and sfreq_ok:
-                print(f"[MATCH] {name}  (sfreq: {sfreq:g}Hz, channels: {ch_names})")
+                print(f"[MATCH] {name}  (sfreq: {sfreq:g}Hz, channels: {ch_names})", file=out)
                 matches.append((name, sfreq))
+                all_results.append((name, "MATCH", f"sfreq={sfreq:g}Hz, channels={ch_names}"))
             else:
                 reasons = []
                 if not channels_ok:
@@ -114,38 +143,57 @@ def check_paradigm(label, paradigm, wanted):
                     reasons.append(f"missing channels: {sorted(missing)}")
                 if not sfreq_ok:
                     reasons.append(f"sfreq {sfreq:g}Hz < required {MIN_SAMPLING_RATE_HZ}Hz")
-                print(f"[no match] {name}  ({'; '.join(reasons)})")
+                reason_str = "; ".join(reasons)
+                print(f"[no match] {name}  ({reason_str})", file=out)
+                all_results.append((name, "no match", reason_str))
 
         except Exception as e:
-            print(f"[ERROR] {name}: {e}")
+            print(f"[ERROR] {name}: {e}", file=out)
+            all_results.append((name, "ERROR", str(e)))
 
-    print("-" * 60)
-    print(f"{label}: {len(matches)} matching dataset(s):")
+    print("-" * 60, file=out)
+    print(f"{label}: {len(matches)} matching dataset(s):", file=out)
     for m, sfreq in matches:
-        print(f"  - {m}  ({sfreq:g}Hz)")
-    print()
+        print(f"  - {m}  ({sfreq:g}Hz)", file=out)
+    print(file=out)
 
-    return matches
+    return matches, all_results
 
 
 def main():
     wanted = normalize(MY_CHANNELS)
 
-    print(f"Target channels: {sorted(MY_CHANNELS)}")
-    print(f"Channel mode: {'EXACT match' if EXACT_MATCH_ONLY else 'SUBSET (dataset may have extra channels)'}")
-    print(f"Minimum sampling rate: {MIN_SAMPLING_RATE_HZ}Hz")
-    print("=" * 60)
+    with open(OUTPUT_FILE, "w") as f:
+        out = Tee(sys.stdout, f)
 
-    all_matches = {}
-    for label, paradigm in PARADIGMS:
-        all_matches[label] = check_paradigm(label, paradigm, wanted)
+        print(f"Run started: {datetime.now().isoformat(timespec='seconds')}", file=out)
+        print(f"Target channels: {sorted(MY_CHANNELS)}", file=out)
+        print(f"Channel mode: {'EXACT match' if EXACT_MATCH_ONLY else 'SUBSET (dataset may have extra channels)'}", file=out)
+        print(f"Minimum sampling rate: {MIN_SAMPLING_RATE_HZ}Hz", file=out)
+        print("=" * 60, file=out)
 
-    print("=" * 60)
-    print("Summary:")
-    for label, matches in all_matches.items():
-        print(f"  {label}: {len(matches)} matching dataset(s)")
-        for name, sfreq in matches:
-            print(f"    - {name}  ({sfreq:g}Hz)")
+        all_matches = {}
+        all_results_by_paradigm = {}
+        for label, paradigm in PARADIGMS:
+            matches, all_results = check_paradigm(label, paradigm, wanted, out)
+            all_matches[label] = matches
+            all_results_by_paradigm[label] = all_results
+
+        print("=" * 60, file=out)
+        print("Summary of matches:", file=out)
+        for label, matches in all_matches.items():
+            print(f"  {label}: {len(matches)} matching dataset(s)", file=out)
+            for name, sfreq in matches:
+                print(f"    - {name}  ({sfreq:g}Hz)", file=out)
+
+        print(file=out)
+        print("Full results (every dataset checked, all paradigms):", file=out)
+        for label, results in all_results_by_paradigm.items():
+            print(f"  [{label}]", file=out)
+            for name, status, detail in results:
+                print(f"    {status:9s} {name}  ({detail})", file=out)
+
+    print(f"\nFull log written to: {OUTPUT_FILE}")
 
 
 if __name__ == "__main__":
