@@ -27,7 +27,7 @@ class BciModelUploader:
     def __init__(
             self,
             application_dictionary: ApplicationDictionary,
-            nfc_reader: NfcReader,
+            nfc_reader: NfcReader | None,
             classifier: Classifier | None
     ):
         self.application_dictionary = application_dictionary
@@ -37,7 +37,7 @@ class BciModelUploader:
     def run( self ):
         print("Run")
         while True:
-            if self.nfc_reader.is_new_data():
+            if self.nfc_reader is not None and self.nfc_reader.is_new_data():
                 # Get User ID and Application Number
                 user_id, application_number = self.nfc_reader.get_data()
                 print(f"user_id: { user_id }, application_number: { application_number }")

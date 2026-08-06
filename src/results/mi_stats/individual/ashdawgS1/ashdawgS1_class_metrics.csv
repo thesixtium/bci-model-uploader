@@ -1,0 +1,4 @@
+subject,subject_display,class,precision,recall,f1,support
+ashdawgS1,Subject 2,Left Hand,0.4358974358974359,0.68,0.53125,25
+ashdawgS1,Subject 2,Rest,0.0,0.0,0.0,22
+ashdawgS1,Subject 2,Right Hand,0.23809523809523808,0.38461538461538464,0.29411764705882354,13

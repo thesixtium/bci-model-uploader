@@ -1,0 +1,4 @@
+subject,subject_display,class,precision,recall,f1,support
+GmoneyS1,Subject 1,Left Hand,0.46296296296296297,0.9259259259259259,0.6172839506172839,27
+GmoneyS1,Subject 1,Rest,0.0,0.0,0.0,22
+GmoneyS1,Subject 1,Right Hand,0.5555555555555556,0.35714285714285715,0.43478260869565216,14

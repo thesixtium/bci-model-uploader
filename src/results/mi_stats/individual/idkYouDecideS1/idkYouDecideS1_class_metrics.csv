@@ -1,0 +1,4 @@
+subject,subject_display,class,precision,recall,f1,support
+idkYouDecideS1,Subject 4,Left Hand,0.44,0.5,0.46808510638297873,22
+idkYouDecideS1,Subject 4,Rest,0.0,0.0,0.0,18
+idkYouDecideS1,Subject 4,Right Hand,0.3125,0.5882352941176471,0.40816326530612246,17

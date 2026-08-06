@@ -14,7 +14,7 @@ from src.run_models.classifier import Classifier
 application_dict = ApplicationDictionary(
     {
         0: TestingMiApplication(
-            name="LexS0",
+            name="glowstickS1",
             model=Model(
             "Schirrmeister2017.ckpt",
             ["F4", "C4", "P4", "P3", "C3", "F3"],

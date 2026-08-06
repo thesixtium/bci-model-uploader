@@ -1,0 +1,4 @@
+subject,subject_display,class,precision,recall,f1,support
+glowstickS1,Subject 3,Left Hand,1.0,0.04,0.07692307692307693,25
+glowstickS1,Subject 3,Rest,0.0,0.0,0.0,21
+glowstickS1,Subject 3,Right Hand,0.22413793103448276,1.0,0.36619718309859156,13
