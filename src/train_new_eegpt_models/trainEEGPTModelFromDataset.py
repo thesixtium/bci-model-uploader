@@ -64,6 +64,45 @@ def _filter_dataloader_excluding_classes(loader, exclude_indices, shuffle):
     )
 
 
+def _num_trials(loader):
+    """Number of trials (samples) in a DataLoader's underlying dataset, or
+    None if the loader itself is None/unavailable."""
+    if loader is None:
+        return None
+    return len(loader.dataset)
+
+
+def _write_trial_counts(data, train_loader, valid_loader, out_dir):
+    """Write the number of train/valid/test trials actually used for this
+    run to trial_counts.txt in `out_dir` (the same directory as the
+    CSVLogger's metrics.csv for this run/version), so it doesn't have to be
+    hand-counted or estimated later, e.g. for a chance-level calculation.
+
+    Counts reflect train_loader/valid_loader as passed in -- i.e. AFTER any
+    exclude_class_names filtering has already been applied, so they match
+    what the model was actually trained/validated on.
+    """
+    n_train = _num_trials(train_loader)
+    n_valid = _num_trials(valid_loader)
+
+    # Not every data loader wrapper exposes a held-out test set; only report
+    # it if one is available.
+    test_loader = data.get_test_loader() if hasattr(data, "get_test_loader") else None
+    n_test = _num_trials(test_loader)
+
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, "trial_counts.txt")
+    with open(out_path, "w") as f:
+        f.write(f"train_trials: {n_train}\n")
+        f.write(f"valid_trials: {n_valid}\n")
+        if n_test is not None:
+            f.write(f"test_trials: {n_test}\n")
+        else:
+            f.write("test_trials: N/A (no held-out test loader exposed by data loader)\n")
+
+    print(f"Trial counts written to: {out_path}")
+
+
 def train_EEGPT_model_from_dataset(
         model_name,
         data,
@@ -119,29 +158,31 @@ def train_EEGPT_model_from_dataset(
             save_last=True  # also always save the most recent
         )
 
+        tb_logger = pl_loggers.TensorBoardLogger(
+            logs_path,
+            name=f"{model_name}_tb",
+            version=f"subject1"
+        )
+        csv_logger = pl_loggers.CSVLogger(
+            logs_path,
+            name=f"{model_name}_csv"
+        )
+
         trainer = pl.Trainer(accelerator='cpu',
                              max_epochs=max_epochs,
                              log_every_n_steps=1,
                              num_sanity_val_steps=0,
                              enable_checkpointing=True,
                              callbacks=[lr_monitor, save],
-                             logger=[
-                                 pl_loggers.TensorBoardLogger(
-                                     logs_path,
-                                     name=f"{model_name}_tb",
-                                     version=f"subject1"
-                                 ),
-                                 pl_loggers.CSVLogger(
-                                     logs_path,
-                                     name=f"{model_name}_csv"
-                                 )
-                             ]
+                             logger=[tb_logger, csv_logger]
                              )
 
         trainer.fit(model, train_loader, valid_loader)
 
         results = trainer.validate(model, valid_loader)
         print(results)
+
+        _write_trial_counts(data, train_loader, valid_loader, csv_logger.log_dir)
         if os.path.exists(f"{checkpoints_path}/{model_name}.ckpt"):
             os.remove(f"{checkpoints_path}/{model_name}.ckpt")
         os.rename(f"{checkpoints_path}/last.ckpt", f"{checkpoints_path}/{model_name}.ckpt")
